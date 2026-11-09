@@ -77,11 +77,12 @@ export type Database = {
           id: string
           room_id: string
           sender_id: string
-          sender_role: 'admin' | 'guest'
-          ciphertext: string
-          iv: string
+          sender_role: 'admin' | 'guest' | 'system'
+          ciphertext: string | null
+          iv: string | null
           attachment_path: string | null
           created_at: string
+          system_template: string | null
           media_viewed_at: string | null
           media_expires_at: string | null
           media_purged: boolean

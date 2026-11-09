@@ -2,11 +2,16 @@ import type { MessagePayload } from './messagePayload.ts'
 
 export type SenderRole = 'admin' | 'guest'
 
+/** 'system' = mensagem oficial gerada pelo banco (ex.: boas-vindas). */
+export type MessageAuthor = SenderRole | 'system'
+
 /** Mensagem pronta para exibir (já decifrada, ou marcada como ilegível). */
 export interface ChatMessage {
   readonly id: string
-  readonly senderRole: SenderRole
+  readonly senderRole: MessageAuthor
   readonly createdAt: Date
+  /** Modelo da mensagem do sistema (o texto vive no código, não no banco). */
+  readonly systemTemplate: string | null
   readonly payload: MessagePayload | null
   /** Enviada por mim e ainda não confirmada pelo servidor. */
   readonly pending: boolean
@@ -31,7 +36,12 @@ export function mergeMessages(current: readonly ChatMessage[], incoming: readonl
     const existing = byId.get(m.id)
     if (!existing || existing.pending || !m.pending) byId.set(m.id, m)
   }
-  return [...byId.values()].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
+  // Em caso de empate no horário, a mensagem do sistema vem primeiro.
+  const systemFirst = (m: ChatMessage) => (m.senderRole === 'system' ? 0 : 1)
+  return [...byId.values()].sort(
+    (a, b) =>
+      a.createdAt.getTime() - b.createdAt.getTime() || systemFirst(a) - systemFirst(b) || a.id.localeCompare(b.id),
+  )
 }
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' })

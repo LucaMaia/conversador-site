@@ -11,6 +11,7 @@ const base: ChatMessage = {
   mediaViewedAt: null,
   mediaExpiresAt: null,
   mediaPurged: false,
+  systemTemplate: null,
 }
 const now = new Date('2026-01-01T10:05:00Z')
 

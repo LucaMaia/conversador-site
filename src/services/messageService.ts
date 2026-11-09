@@ -8,18 +8,21 @@ import { supabase } from './supabaseClient.ts'
 type MessageRow = Database['public']['Tables']['messages']['Row']
 
 const COLUMNS =
-  'id, room_id, sender_id, sender_role, ciphertext, iv, attachment_path, created_at, media_viewed_at, media_expires_at, media_purged'
+  'id, room_id, sender_id, sender_role, ciphertext, iv, attachment_path, created_at, system_template, media_viewed_at, media_expires_at, media_purged'
 
 function toDate(value: string | null): Date | null {
   return value ? new Date(value) : null
 }
 
 async function toChatMessage(roomKey: CryptoKey, row: MessageRow): Promise<ChatMessage> {
+  // Mensagens do sistema não têm conteúdo cifrado: só o identificador do modelo.
   let payload: MessagePayload | null = null
-  try {
-    payload = await decryptMessage(roomKey, row.room_id, row.id, { ciphertext: row.ciphertext, iv: row.iv })
-  } catch {
-    payload = null // exibida como "mensagem ilegível"
+  if (row.sender_role !== 'system' && row.ciphertext && row.iv) {
+    try {
+      payload = await decryptMessage(roomKey, row.room_id, row.id, { ciphertext: row.ciphertext, iv: row.iv })
+    } catch {
+      payload = null // exibida como "mensagem ilegível"
+    }
   }
   return {
     id: row.id,
@@ -31,6 +34,7 @@ async function toChatMessage(roomKey: CryptoKey, row: MessageRow): Promise<ChatM
     mediaViewedAt: toDate(row.media_viewed_at),
     mediaExpiresAt: toDate(row.media_expires_at),
     mediaPurged: row.media_purged,
+    systemTemplate: row.sender_role === 'system' ? row.system_template : null,
   }
 }
 

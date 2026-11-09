@@ -1,8 +1,20 @@
 import { memo } from 'react'
 import { formatMessageTime, type ChatMessage } from '../../domain/chat.ts'
+import { systemTemplate } from '../../domain/systemMessages.ts'
 import { MediaBubbleContent } from './MediaBubbleContent.tsx'
+import { SystemMessageCard } from './SystemMessageCard.tsx'
 
 export const MessageBubble = memo(function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
+  if (message.senderRole === 'system') {
+    const template = systemTemplate(message.systemTemplate)
+    // Modelo desconhecido nunca é exibido como mensagem oficial.
+    return template ? (
+      <SystemMessageCard template={template} />
+    ) : (
+      <li className="text-center text-xs text-ink-600">Mensagem do sistema não reconhecida</li>
+    )
+  }
+
   const { payload } = message
   return (
     <li className={`flex ${mine ? 'justify-end' : 'justify-start'} animate-[fade-in_150ms_ease-out]`}>

@@ -11,6 +11,7 @@ function msg(id: string, iso: string, pending = false): ChatMessage {
     mediaViewedAt: null,
     mediaExpiresAt: null,
     mediaPurged: false,
+    systemTemplate: null,
   }
 }
 

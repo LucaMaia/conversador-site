@@ -21,6 +21,7 @@ function pendingMessage(id: string, senderRole: ChatMessage['senderRole'], paylo
     mediaViewedAt: null,
     mediaExpiresAt: null,
     mediaPurged: false,
+    systemTemplate: null,
   }
 }
 
