@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import type { RoomSession } from '../../app/sessionContext.tsx'
 import { roomPhase } from '../../domain/rooms.ts'
-import { deriveRoomKeys, parseInviteCode } from '../../lib/crypto/index.ts'
+import { deriveRoomKeys, MAX_ROOM_LABEL_LENGTH, parseInviteCode } from '../../lib/crypto/index.ts'
 import { useAdminRooms } from '../../hooks/useAdminRooms.ts'
 import { useServerClock } from '../../hooks/useServerClock.ts'
 import { ServiceError } from '../../services/errors.ts'
@@ -21,7 +21,8 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: AdminDashboardProps) {
   const { now } = useServerClock()
-  const { rooms, loading, error, create, remove } = useAdminRooms(userId, masterKey)
+  const { rooms, loading, error, create, remove, rename } = useAdminRooms(userId, masterKey)
+  const [newLabel, setNewLabel] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [newCode, setNewCode] = useState<string | null>(null)
@@ -36,15 +37,17 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
   async function handleEnter(room: AdminRoom) {
     const code = await revealInviteCode(room, masterKey)
     const { roomKey } = await deriveRoomKeys(parseInviteCode(code).bytes)
-    onEnterRoom({ roomId: room.id, roomKey, role: 'admin' })
+    onEnterRoom({ roomId: room.id, roomKey, role: 'admin', label: room.label })
   }
 
-  async function handleCreate() {
+  async function handleCreate(event: FormEvent) {
+    event.preventDefault()
     setCreating(true)
     setCreateError(null)
     try {
-      const { code } = await create()
+      const { code } = await create(newLabel)
       setNewCode(code)
+      setNewLabel('')
     } catch (err) {
       setCreateError(err instanceof ServiceError ? err.message : 'Falha ao criar a conversa.')
     } finally {
@@ -64,9 +67,20 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
       <StatsBar active={active.length} expired={inactive.length} />
 
       <div className="flex flex-col gap-3">
-        <Button onClick={handleCreate} busy={creating} className="self-start">
-          Nova conversa
-        </Button>
+        <form onSubmit={handleCreate} className="flex flex-col gap-2 sm:flex-row">
+          <input
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            maxLength={MAX_ROOM_LABEL_LENGTH}
+            placeholder="Nome da pessoa (opcional)"
+            aria-label="Nome da nova conversa"
+            className="h-10 flex-1 rounded-lg border border-ink-700 bg-ink-900 px-3 text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none"
+          />
+          <Button type="submit" busy={creating}>
+            Nova conversa
+          </Button>
+        </form>
+        <p className="text-xs text-ink-600">O nome fica cifrado no seu cofre e só você o vê.</p>
         <ErrorText message={createError} />
         {newCode && <NewRoomNotice code={newCode} onClose={() => setNewCode(null)} />}
       </div>
@@ -84,7 +98,7 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
         ) : (
           <ul className="flex flex-col gap-3">
             {active.map((room) => (
-              <RoomCard key={room.id} room={room} now={now} masterKey={masterKey} onDelete={remove} onEnter={handleEnter} />
+              <RoomCard key={room.id} room={room} now={now} masterKey={masterKey} onDelete={remove} onEnter={handleEnter} onRename={rename} />
             ))}
           </ul>
         )}
@@ -97,7 +111,7 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
           </h2>
           <ul className="flex flex-col gap-3">
             {inactive.map((room) => (
-              <RoomCard key={room.id} room={room} now={now} masterKey={masterKey} onDelete={remove} onEnter={handleEnter} />
+              <RoomCard key={room.id} room={room} now={now} masterKey={masterKey} onDelete={remove} onEnter={handleEnter} onRename={rename} />
             ))}
           </ul>
         </section>

@@ -150,3 +150,57 @@ export async function decryptInviteCode(
   }
   return secret.code
 }
+
+// ---------------------------------------------------------------------------
+// Nome da conversa (visível só para o admin). Mesmo esquema do código:
+// AES-GCM com a master key e AAD ligado ao hash da sala.
+// ---------------------------------------------------------------------------
+export const MAX_ROOM_LABEL_LENGTH = 60
+
+export interface EncryptedRoomLabel {
+  readonly admin_label_ct: string
+  readonly admin_label_iv: string
+}
+
+function labelAad(accessHash: string) {
+  return utf8Encode(`mp/label/v1|${accessHash}`)
+}
+
+/** Normaliza o nome digitado; retorna null se vazio. */
+export function normalizeRoomLabel(label: string): string | null {
+  const trimmed = label.normalize('NFC').replace(/\s+/g, ' ').trim()
+  if (!trimmed) return null
+  // Corta por caracteres (code points), sem partir emojis ao meio.
+  return Array.from(trimmed).slice(0, MAX_ROOM_LABEL_LENGTH).join('')
+}
+
+export async function encryptRoomLabel(
+  masterKey: CryptoKey,
+  accessHash: string,
+  label: string,
+): Promise<EncryptedRoomLabel> {
+  const iv = randomBytes(12)
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: labelAad(accessHash) },
+    masterKey,
+    utf8Encode(label),
+  )
+  return { admin_label_ct: toBase64(new Uint8Array(ct)), admin_label_iv: toBase64(iv) }
+}
+
+export async function decryptRoomLabel(
+  masterKey: CryptoKey,
+  accessHash: string,
+  encrypted: EncryptedRoomLabel,
+): Promise<string> {
+  try {
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromBase64(encrypted.admin_label_iv), additionalData: labelAad(accessHash) },
+      masterKey,
+      fromBase64(encrypted.admin_label_ct),
+    )
+    return utf8Decode(new Uint8Array(plain))
+  } catch {
+    throw new CryptoError('decrypt_failed', 'Não foi possível decifrar o nome da conversa')
+  }
+}

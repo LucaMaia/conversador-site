@@ -40,14 +40,21 @@ export type Database = {
           created_at: string
           expires_at: string
           status: 'active' | 'purging'
+          admin_label_ct: string | null
+          admin_label_iv: string | null
         }
         Insert: {
           access_hash: string
           admin_code_ct: string
           admin_code_iv: string
           created_by: string
+          admin_label_ct?: string | null
+          admin_label_iv?: string | null
         }
-        Update: never
+        Update: {
+          admin_label_ct?: string | null
+          admin_label_iv?: string | null
+        }
         Relationships: []
       }
       room_members: {

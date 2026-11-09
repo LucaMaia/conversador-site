@@ -13,6 +13,8 @@ export interface RoomSession {
   readonly roomId: string
   readonly roomKey: CryptoKey
   readonly role: ParticipantRole
+  /** Nome da conversa, só para o admin (decifrado do cofre). */
+  readonly label?: string | null
 }
 
 interface SessionContextValue {

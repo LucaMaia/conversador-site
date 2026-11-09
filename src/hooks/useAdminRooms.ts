@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ServiceError } from '../services/errors.ts'
-import { createRoom, deleteRoom, listRooms, type AdminRoom } from '../services/roomService.ts'
+import { createRoom, deleteRoom, listRooms, renameRoom, type AdminRoom } from '../services/roomService.ts'
 
 const REFRESH_MS = 30_000
 
@@ -15,14 +15,14 @@ export function useAdminRooms(adminUserId: string, masterKey: CryptoKey) {
 
   const refresh = useCallback(async () => {
     try {
-      setRooms(await listRooms())
+      setRooms(await listRooms(masterKey))
       setError(null)
     } catch (err) {
       setError(messageOf(err, 'Falha ao carregar as conversas.'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [masterKey])
 
   useEffect(() => {
     void refresh()
@@ -30,8 +30,8 @@ export function useAdminRooms(adminUserId: string, masterKey: CryptoKey) {
     return () => clearInterval(timer)
   }, [refresh])
 
-  const create = useCallback(async () => {
-    const result = await createRoom(adminUserId, masterKey)
+  const create = useCallback(async (label: string) => {
+    const result = await createRoom(adminUserId, masterKey, label)
     setRooms((current) => [result.room, ...current])
     return result
   }, [adminUserId, masterKey])
@@ -45,5 +45,13 @@ export function useAdminRooms(adminUserId: string, masterKey: CryptoKey) {
     [refresh],
   )
 
-  return { rooms, loading, error, refresh, create, remove }
+  const rename = useCallback(
+    async (room: AdminRoom, label: string) => {
+      const saved = await renameRoom(room, masterKey, label)
+      setRooms((current) => current.map((r) => (r.id === room.id ? { ...r, label: saved } : r)))
+    },
+    [masterKey],
+  )
+
+  return { rooms, loading, error, refresh, create, remove, rename }
 }

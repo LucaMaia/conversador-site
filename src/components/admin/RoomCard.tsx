@@ -3,6 +3,7 @@ import { formatDateTime, formatRemaining, remainingMs, roomPhase } from '../../d
 import type { AdminRoom } from '../../services/roomService.ts'
 import { Button } from '../ui/Button.tsx'
 import { InviteCodeActions } from './InviteCodeActions.tsx'
+import { RoomLabelEditor } from './RoomLabelEditor.tsx'
 
 interface RoomCardProps {
   room: AdminRoom
@@ -10,11 +11,12 @@ interface RoomCardProps {
   masterKey: CryptoKey
   onDelete: (roomId: string) => Promise<void>
   onEnter: (room: AdminRoom) => Promise<void>
+  onRename: (room: AdminRoom, label: string) => Promise<void>
 }
 
 const PHASE_LABEL = { active: 'Ativa', expired: 'Expirada', purging: 'Em limpeza' } as const
 
-export function RoomCard({ room, now, masterKey, onDelete, onEnter }: RoomCardProps) {
+export function RoomCard({ room, now, masterKey, onDelete, onEnter, onRename }: RoomCardProps) {
   const phase = roomPhase(room.status, room.expiresAt, now)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -51,6 +53,13 @@ export function RoomCard({ room, now, masterKey, onDelete, onEnter }: RoomCardPr
 
   return (
     <li className="rounded-xl border border-ink-800 bg-ink-900 p-4 animate-[fade-in_200ms_ease-out]">
+      <div className="mb-2 flex">
+        <RoomLabelEditor
+          label={room.label}
+          editable={phase === 'active'}
+          onSave={(label) => onRename(room, label)}
+        />
+      </div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span

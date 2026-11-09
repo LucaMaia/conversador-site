@@ -61,7 +61,7 @@ function ChatRoom({ session }: { session: RoomSession }) {
       style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
     >
       <ChatHeader
-        title={isAdmin ? 'Conversa (admin)' : 'Conversa privada'}
+        title={isAdmin ? (session.label ?? 'Conversa sem nome') : 'Conversa privada'}
         expiresAt={expiresAt}
         now={now}
         connected={connected}
