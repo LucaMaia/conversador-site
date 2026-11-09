@@ -10,6 +10,14 @@ export interface ChatMessage {
   readonly payload: MessagePayload | null
   /** Enviada por mim e ainda não confirmada pelo servidor. */
   readonly pending: boolean
+  /** Caminho do arquivo cifrado no Storage (mensagens de mídia). */
+  readonly attachmentPath: string | null
+  /** Primeira abertura pelo destinatário (definida pelo servidor). */
+  readonly mediaViewedAt: Date | null
+  /** Fim do acesso à mídia: 15 min após a primeira abertura. */
+  readonly mediaExpiresAt: Date | null
+  /** Arquivo já removido do servidor. */
+  readonly mediaPurged: boolean
 }
 
 /**

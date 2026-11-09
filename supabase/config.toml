@@ -428,3 +428,6 @@ verify_jwt = false
 
 [functions.join-room]
 verify_jwt = false
+
+[functions.purge-expired]
+verify_jwt = false

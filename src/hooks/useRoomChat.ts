@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RoomSession } from '../app/sessionContext.tsx'
 import { mergeMessages, type ChatMessage } from '../domain/chat.ts'
-import { MAX_TEXT_LENGTH } from '../domain/messagePayload.ts'
+import { MAX_TEXT_LENGTH, type MediaPayload } from '../domain/messagePayload.ts'
+import { prepareImage, uploadEncryptedFile } from '../services/mediaService.ts'
 import { fetchMessages, sendMessage, subscribeToMessages } from '../services/messageService.ts'
+import { ServiceError } from '../services/errors.ts'
 import { fetchRoomInfo } from '../services/roomAccessService.ts'
 
 const ACCESS_CHECK_MS = 15_000
+
+function pendingMessage(id: string, senderRole: ChatMessage['senderRole'], payload: ChatMessage['payload']): ChatMessage {
+  return {
+    id,
+    senderRole,
+    createdAt: new Date(),
+    payload,
+    pending: true,
+    attachmentPath: null,
+    mediaViewedAt: null,
+    mediaExpiresAt: null,
+    mediaPurged: false,
+  }
+}
 
 export type ChatEndReason = 'expired' | 'revoked'
 
@@ -97,9 +113,7 @@ export function useRoomChat(session: RoomSession, now: Date) {
       setSendError(null)
       const id = crypto.randomUUID()
       const payload = { v: 1, kind: 'text', text: trimmed } as const
-      setMessages((current) =>
-        mergeMessages(current, [{ id, senderRole: role, createdAt: new Date(), payload, pending: true }]),
-      )
+      setMessages((current) => mergeMessages(current, [pendingMessage(id, role, payload)]))
       try {
         const confirmed = await sendMessage(roomId, roomKey, id, payload)
         if (!endedRef.current) setMessages((current) => mergeMessages(current, [confirmed]))
@@ -112,5 +126,35 @@ export function useRoomChat(session: RoomSession, now: Date) {
     [roomId, roomKey, role, checkAccess],
   )
 
-  return { messages, status, expiresAt, connected, sendError, sendText }
+  const sendImage = useCallback(
+    async (file: File) => {
+      if (endedRef.current) return
+      setSendError(null)
+      const id = crypto.randomUUID()
+      try {
+        // Remove metadados (EXIF/GPS) e reduz antes de cifrar.
+        const image = await prepareImage(file)
+        const payload: MediaPayload = {
+          v: 1,
+          kind: 'image',
+          mime: 'image/jpeg',
+          size: image.blob.size,
+          fileId: crypto.randomUUID(),
+          width: image.width,
+          height: image.height,
+        }
+        setMessages((current) => mergeMessages(current, [pendingMessage(id, role, payload)]))
+        const path = await uploadEncryptedFile(roomId, roomKey, payload.fileId, image.blob)
+        const confirmed = await sendMessage(roomId, roomKey, id, payload, path)
+        if (!endedRef.current) setMessages((current) => mergeMessages(current, [confirmed]))
+      } catch (err) {
+        setMessages((current) => current.filter((m) => m.id !== id))
+        setSendError(err instanceof ServiceError ? err.message : 'Imagem não enviada.')
+        void checkAccess()
+      }
+    },
+    [roomId, roomKey, role, checkAccess],
+  )
+
+  return { messages, status, expiresAt, connected, sendError, sendText, sendImage }
 }

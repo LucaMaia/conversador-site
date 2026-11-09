@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { formatMessageTime, type ChatMessage } from '../../domain/chat.ts'
+import { MediaBubbleContent } from './MediaBubbleContent.tsx'
 
 export const MessageBubble = memo(function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
   const { payload } = message
@@ -14,11 +15,13 @@ export const MessageBubble = memo(function MessageBubble({ message, mine }: { me
           <p className="text-sm text-ink-400 italic">Mensagem ilegível</p>
         ) : payload.kind === 'text' ? (
           <p className="text-[15px] leading-snug wrap-break-word whitespace-pre-wrap">{payload.text}</p>
+        ) : payload.kind === 'image' ? (
+          <MediaBubbleContent message={message} payload={payload} mine={mine} />
         ) : (
-          <p className="text-sm text-ink-400 italic">Mídia</p>
+          <p className="text-sm text-ink-400 italic">Mídia não suportada nesta versão</p>
         )}
         <p className="mt-1 text-right text-[11px] leading-none text-ink-400">
-          {message.pending ? 'enviando…' : formatMessageTime(message.createdAt)}
+          {message.pending && payload?.kind === 'text' ? 'enviando…' : formatMessageTime(message.createdAt)}
         </p>
       </div>
     </li>

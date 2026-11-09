@@ -11,6 +11,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // Valores fictícios: nenhum teste unitário acessa a rede.
+    env: { VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_PUBLISHABLE_KEY: 'test-key' },
     include: ['src/**/*.test.{ts,tsx}'],
   },
 })

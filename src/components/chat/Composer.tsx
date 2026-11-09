@@ -1,17 +1,21 @@
 import { memo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { MAX_TEXT_LENGTH } from '../../domain/messagePayload.ts'
+import { ImageSendPreview } from './ImageSendPreview.tsx'
 
 interface ComposerProps {
   disabled: boolean
   onSend: (text: string) => Promise<void>
+  onSendImage: (file: File) => Promise<void>
 }
 
 /** Em telas de toque, Enter quebra linha (como no WhatsApp) e o botão envia. */
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches
 
-export const Composer = memo(function Composer({ disabled, onSend }: ComposerProps) {
+export const Composer = memo(function Composer({ disabled, onSend, onSendImage }: ComposerProps) {
   const [text, setText] = useState('')
+  const [pendingImage, setPendingImage] = useState<File | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function resize() {
     const el = textareaRef.current
@@ -36,6 +40,18 @@ export const Composer = memo(function Composer({ disabled, onSend }: ComposerPro
   }
 
   return (
+    <>
+    {pendingImage && (
+      <ImageSendPreview
+        file={pendingImage}
+        onCancel={() => setPendingImage(null)}
+        onConfirm={() => {
+          const file = pendingImage
+          setPendingImage(null)
+          void onSendImage(file)
+        }}
+      />
+    )}
     <form
       onSubmit={(e: FormEvent) => {
         e.preventDefault()
@@ -43,6 +59,30 @@ export const Composer = memo(function Composer({ disabled, onSend }: ComposerPro
       }}
       className="flex shrink-0 items-end gap-2 border-t border-ink-800 bg-ink-900 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) setPendingImage(file)
+        }}
+      />
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => fileInputRef.current?.click()}
+        aria-label="Enviar foto"
+        className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-800 hover:text-ink-200 disabled:opacity-30"
+      >
+        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <circle cx="9" cy="10" r="1.6" />
+          <path d="m21 16-5-5-8 8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
       <textarea
         ref={textareaRef}
         rows={1}
@@ -73,5 +113,6 @@ export const Composer = memo(function Composer({ disabled, onSend }: ComposerPro
         </svg>
       </button>
     </form>
+    </>
   )
 })

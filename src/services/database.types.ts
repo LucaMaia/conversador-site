@@ -42,6 +42,7 @@ export type Database = {
           status: 'active' | 'purging'
           admin_label_ct: string | null
           admin_label_iv: string | null
+          admin_last_read_at: string
         }
         Insert: {
           access_hash: string
@@ -81,6 +82,9 @@ export type Database = {
           iv: string
           attachment_path: string | null
           created_at: string
+          media_viewed_at: string | null
+          media_expires_at: string | null
+          media_purged: boolean
         }
         Insert: {
           id: string
@@ -96,6 +100,12 @@ export type Database = {
     Views: { [_ in never]: never }
     Functions: {
       server_now: { Args: Record<PropertyKey, never>; Returns: string }
+      admin_room_activity: {
+        Args: Record<PropertyKey, never>
+        Returns: { room_id: string; unread: number; last_message_at: string | null }[]
+      }
+      mark_room_read: { Args: { p_room_id: string }; Returns: undefined }
+      mark_media_viewed: { Args: { p_message_id: string }; Returns: string | null }
       get_room_info: {
         Args: { p_room_id: string }
         Returns: { id: string; created_at: string; expires_at: string; server_now: string }[]

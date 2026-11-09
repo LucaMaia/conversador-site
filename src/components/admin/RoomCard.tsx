@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { formatDateTime, formatRemaining, remainingMs, roomPhase } from '../../domain/rooms.ts'
+import type { DashboardRoom } from '../../hooks/useAdminRooms.ts'
 import type { AdminRoom } from '../../services/roomService.ts'
+import { formatMessageTime } from '../../domain/chat.ts'
 import { Button } from '../ui/Button.tsx'
 import { InviteCodeActions } from './InviteCodeActions.tsx'
 import { RoomLabelEditor } from './RoomLabelEditor.tsx'
 
 interface RoomCardProps {
-  room: AdminRoom
+  room: DashboardRoom
   now: Date
   masterKey: CryptoKey
   onDelete: (roomId: string) => Promise<void>
@@ -18,6 +20,7 @@ const PHASE_LABEL = { active: 'Ativa', expired: 'Expirada', purging: 'Em limpeza
 
 export function RoomCard({ room, now, masterKey, onDelete, onEnter, onRename }: RoomCardProps) {
   const phase = roomPhase(room.status, room.expiresAt, now)
+  const hasUnread = phase === 'active' && room.unread > 0
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,14 +55,31 @@ export function RoomCard({ room, now, masterKey, onDelete, onEnter, onRename }: 
   }
 
   return (
-    <li className="rounded-xl border border-ink-800 bg-ink-900 p-4 animate-[fade-in_200ms_ease-out]">
-      <div className="mb-2 flex">
+    <li
+      className={`rounded-xl border p-4 transition-colors duration-300 animate-[fade-in_200ms_ease-out] ${
+        hasUnread ? 'border-accent-500/50 bg-ink-850' : 'border-ink-800 bg-ink-900'
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
         <RoomLabelEditor
           label={room.label}
           editable={phase === 'active'}
           onSave={(label) => onRename(room, label)}
         />
+        {hasUnread && (
+          <span
+            className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent-500 px-2 text-xs font-semibold text-ink-950 animate-[fade-in_200ms_ease-out]"
+            aria-label={`${room.unread} mensagens não lidas`}
+          >
+            {room.unread > 99 ? '99+' : room.unread}
+          </span>
+        )}
       </div>
+      {phase === 'active' && room.lastMessageAt && (
+        <p className={`-mt-1 mb-2 text-xs ${hasUnread ? 'text-accent-500' : 'text-ink-400'}`}>
+          {hasUnread ? 'Nova mensagem' : 'Última mensagem'} às {formatMessageTime(room.lastMessageAt)}
+        </p>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span

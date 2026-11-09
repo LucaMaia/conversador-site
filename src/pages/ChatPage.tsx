@@ -1,13 +1,16 @@
+import { useEffect } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useSession, type RoomSession } from '../app/sessionContext.tsx'
 import { ChatHeader } from '../components/chat/ChatHeader.tsx'
 import { Composer } from '../components/chat/Composer.tsx'
 import { MessageList } from '../components/chat/MessageList.tsx'
+import { RoomMediaProvider } from '../components/chat/roomMediaContext.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { CenteredCard } from '../components/ui/CenteredCard.tsx'
 import { useRoomChat, type ChatEndReason } from '../hooks/useRoomChat.ts'
 import { useServerClock } from '../hooks/useServerClock.ts'
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight.ts'
+import { markRoomRead } from '../services/activityService.ts'
 import { signOut } from '../services/authService.ts'
 
 export function ChatPage() {
@@ -33,14 +36,22 @@ function ChatRoom({ session }: { session: RoomSession }) {
   const navigate = useNavigate()
   const { setRoom } = useSession()
   const { now } = useServerClock()
-  const { messages, status, expiresAt, connected, sendError, sendText } = useRoomChat(session, now)
+  const { messages, status, expiresAt, connected, sendError, sendText, sendImage } = useRoomChat(session, now)
   const viewportHeight = useVisualViewportHeight()
   const isAdmin = session.role === 'admin'
+
+  // Admin com a conversa aberta: tudo que chega já conta como lido.
+  const messageCount = messages.length
+  useEffect(() => {
+    if (!isAdmin || status.kind !== 'ready') return
+    markRoomRead(session.roomId).catch(() => {})
+  }, [isAdmin, status.kind, messageCount, session.roomId])
 
   async function leave() {
     // O React Router aplica a navegação depois da limpeza da sessão; nesse
     // intervalo, o redirecionamento de "sem sessão" acima leva o admin ao painel.
     if (isAdmin) {
+      await markRoomRead(session.roomId).catch(() => {})
       navigate('/admin')
       setRoom(null)
     } else {
@@ -79,14 +90,16 @@ function ChatRoom({ session }: { session: RoomSession }) {
           {status.message}
         </p>
       ) : (
-        <MessageList messages={messages} myRole={session.role} />
+        <RoomMediaProvider roomId={session.roomId} roomKey={session.roomKey} myRole={session.role}>
+          <MessageList messages={messages} myRole={session.role} />
+        </RoomMediaProvider>
       )}
       {sendError && (
         <p role="alert" className="bg-ink-900 px-4 pt-2 text-xs text-danger-500">
           {sendError}
         </p>
       )}
-      <Composer disabled={status.kind !== 'ready'} onSend={sendText} />
+      <Composer disabled={status.kind !== 'ready'} onSend={sendText} onSendImage={sendImage} />
     </div>
   )
 }

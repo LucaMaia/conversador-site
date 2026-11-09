@@ -7,6 +7,10 @@ function msg(id: string, iso: string, pending = false): ChatMessage {
     createdAt: new Date(iso),
     payload: { v: 1, kind: 'text', text: id },
     pending,
+    attachmentPath: null,
+    mediaViewedAt: null,
+    mediaExpiresAt: null,
+    mediaPurged: false,
   }
 }
 

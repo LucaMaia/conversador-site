@@ -7,7 +7,12 @@ import { supabase } from './supabaseClient.ts'
 
 type MessageRow = Database['public']['Tables']['messages']['Row']
 
-const COLUMNS = 'id, room_id, sender_id, sender_role, ciphertext, iv, attachment_path, created_at'
+const COLUMNS =
+  'id, room_id, sender_id, sender_role, ciphertext, iv, attachment_path, created_at, media_viewed_at, media_expires_at, media_purged'
+
+function toDate(value: string | null): Date | null {
+  return value ? new Date(value) : null
+}
 
 async function toChatMessage(roomKey: CryptoKey, row: MessageRow): Promise<ChatMessage> {
   let payload: MessagePayload | null = null
@@ -22,6 +27,10 @@ async function toChatMessage(roomKey: CryptoKey, row: MessageRow): Promise<ChatM
     createdAt: new Date(row.created_at),
     payload,
     pending: false,
+    attachmentPath: row.attachment_path,
+    mediaViewedAt: toDate(row.media_viewed_at),
+    mediaExpiresAt: toDate(row.media_expires_at),
+    mediaPurged: row.media_purged,
   }
 }
 
@@ -54,21 +63,27 @@ export async function sendMessage(
   return toChatMessage(roomKey, data)
 }
 
-/** Recebe mensagens novas em tempo real (o Realtime aplica a RLS). */
+/**
+ * Recebe mensagens novas e atualizações (ex.: imagem vista) em tempo real.
+ * O Realtime aplica a RLS: só chega o que o usuário pode ler.
+ */
 export function subscribeToMessages(
   roomId: string,
   roomKey: CryptoKey,
   onMessage: (message: ChatMessage) => void,
   onStatus: (connected: boolean) => void,
 ): () => void {
+  const handle = (row: MessageRow) => {
+    void toChatMessage(roomKey, row).then(onMessage)
+  }
+  const filter = `room_id=eq.${roomId}`
   const channel = supabase
     .channel(`messages:${roomId}`)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-      (change) => {
-        void toChatMessage(roomKey, change.new as MessageRow).then(onMessage)
-      },
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter }, (change) =>
+      handle(change.new as MessageRow),
+    )
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter }, (change) =>
+      handle(change.new as MessageRow),
     )
     .subscribe((status) => onStatus(status === 'SUBSCRIBED'))
 

@@ -11,10 +11,12 @@ vi.mock('../hooks/useRoomChat.ts', () => ({
     connected: true,
     sendError: null,
     sendText: async () => {},
+    sendImage: async () => {},
   }),
 }))
 vi.mock('../hooks/useServerClock.ts', () => ({ useServerClock: () => ({ now: new Date(), synced: true }) }))
 vi.mock('../services/authService.ts', () => ({ signOut: vi.fn(async () => {}) }))
+vi.mock('../services/activityService.ts', () => ({ markRoomRead: vi.fn(async () => {}) }))
 
 const { ChatPage } = await import('./ChatPage.tsx')
 

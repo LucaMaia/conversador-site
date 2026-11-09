@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { RoomSession } from '../../app/sessionContext.tsx'
+import { sortByActivity, totalUnread } from '../../domain/roomOrdering.ts'
 import { roomPhase } from '../../domain/rooms.ts'
 import { deriveRoomKeys, MAX_ROOM_LABEL_LENGTH, parseInviteCode } from '../../lib/crypto/index.ts'
 import { useAdminRooms } from '../../hooks/useAdminRooms.ts'
@@ -31,8 +32,17 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
   const { active, inactive } = useMemo(() => {
     const isActive = (status: (typeof rooms)[number]) =>
       roomPhase(status.status, status.expiresAt, now) === 'active'
-    return { active: rooms.filter(isActive), inactive: rooms.filter((r) => !isActive(r)) }
+    return { active: sortByActivity(rooms.filter(isActive)), inactive: rooms.filter((r) => !isActive(r)) }
   }, [rooms, now])
+
+  // Total de não lidas no título da aba: "(3) Mensageiro".
+  const unreadTotal = totalUnread(active)
+  useEffect(() => {
+    document.title = unreadTotal > 0 ? `(${unreadTotal}) Mensageiro` : 'Mensageiro'
+    return () => {
+      document.title = 'Mensageiro'
+    }
+  }, [unreadTotal])
 
   /** Deriva a chave da sala a partir do código guardado no cofre. */
   async function handleEnter(room: AdminRoom) {
@@ -94,6 +104,11 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
       <section aria-labelledby="active-heading" className="flex flex-col gap-3">
         <h2 id="active-heading" className="text-xs font-medium tracking-wide text-ink-400 uppercase">
           Ativas
+          {unreadTotal > 0 && (
+            <span className="ml-2 normal-case tracking-normal text-accent-500">
+              {unreadTotal === 1 ? '1 mensagem nova' : `${unreadTotal} mensagens novas`}
+            </span>
+          )}
         </h2>
         {loading ? (
           <p className="text-sm text-ink-400">Carregando…</p>
