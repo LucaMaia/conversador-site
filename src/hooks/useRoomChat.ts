@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RoomSession } from '../app/sessionContext.tsx'
 import { mergeMessages, type ChatMessage } from '../domain/chat.ts'
 import { MAX_TEXT_LENGTH, type MediaPayload } from '../domain/messagePayload.ts'
+import type { RecordedAudio } from '../lib/audioRecorder.ts'
 import { prepareImage, uploadEncryptedFile } from '../services/mediaService.ts'
 import { fetchMessages, sendMessage, subscribeToMessages } from '../services/messageService.ts'
 import { ServiceError } from '../services/errors.ts'
@@ -126,12 +127,30 @@ export function useRoomChat(session: RoomSession, now: Date) {
     [roomId, roomKey, role, checkAccess],
   )
 
-  const sendImage = useCallback(
-    async (file: File) => {
+  /** Envio comum de mídia: mensagem otimista → arquivo cifrado → mensagem cifrada. */
+  const sendMedia = useCallback(
+    async (prepare: () => Promise<{ payload: MediaPayload; blob: Blob }>, fallbackError: string) => {
       if (endedRef.current) return
       setSendError(null)
       const id = crypto.randomUUID()
       try {
+        const { payload, blob } = await prepare()
+        setMessages((current) => mergeMessages(current, [pendingMessage(id, role, payload)]))
+        const path = await uploadEncryptedFile(roomId, roomKey, payload.fileId, blob)
+        const confirmed = await sendMessage(roomId, roomKey, id, payload, path)
+        if (!endedRef.current) setMessages((current) => mergeMessages(current, [confirmed]))
+      } catch (err) {
+        setMessages((current) => current.filter((m) => m.id !== id))
+        setSendError(err instanceof ServiceError ? err.message : fallbackError)
+        void checkAccess()
+      }
+    },
+    [roomId, roomKey, role, checkAccess],
+  )
+
+  const sendImage = useCallback(
+    (file: File) =>
+      sendMedia(async () => {
         // Remove metadados (EXIF/GPS) e reduz antes de cifrar.
         const image = await prepareImage(file)
         const payload: MediaPayload = {
@@ -143,18 +162,26 @@ export function useRoomChat(session: RoomSession, now: Date) {
           width: image.width,
           height: image.height,
         }
-        setMessages((current) => mergeMessages(current, [pendingMessage(id, role, payload)]))
-        const path = await uploadEncryptedFile(roomId, roomKey, payload.fileId, image.blob)
-        const confirmed = await sendMessage(roomId, roomKey, id, payload, path)
-        if (!endedRef.current) setMessages((current) => mergeMessages(current, [confirmed]))
-      } catch (err) {
-        setMessages((current) => current.filter((m) => m.id !== id))
-        setSendError(err instanceof ServiceError ? err.message : 'Imagem não enviada.')
-        void checkAccess()
-      }
-    },
-    [roomId, roomKey, role, checkAccess],
+        return { payload, blob: image.blob }
+      }, 'Imagem não enviada.'),
+    [sendMedia],
   )
 
-  return { messages, status, expiresAt, connected, sendError, sendText, sendImage }
+  const sendAudio = useCallback(
+    (audio: RecordedAudio) =>
+      sendMedia(async () => {
+        const payload: MediaPayload = {
+          v: 1,
+          kind: 'audio',
+          mime: audio.mime,
+          size: audio.blob.size,
+          fileId: crypto.randomUUID(),
+          durationMs: Math.round(audio.durationMs),
+        }
+        return { payload, blob: audio.blob }
+      }, 'Áudio não enviado.'),
+    [sendMedia],
+  )
+
+  return { messages, status, expiresAt, connected, sendError, sendText, sendImage, sendAudio }
 }

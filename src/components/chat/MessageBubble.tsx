@@ -15,7 +15,7 @@ export const MessageBubble = memo(function MessageBubble({ message, mine }: { me
           <p className="text-sm text-ink-400 italic">Mensagem ilegível</p>
         ) : payload.kind === 'text' ? (
           <p className="text-[15px] leading-snug wrap-break-word whitespace-pre-wrap">{payload.text}</p>
-        ) : payload.kind === 'image' ? (
+        ) : payload.kind === 'image' || payload.kind === 'audio' ? (
           <MediaBubbleContent message={message} payload={payload} mine={mine} />
         ) : (
           <p className="text-sm text-ink-400 italic">Mídia não suportada nesta versão</p>
