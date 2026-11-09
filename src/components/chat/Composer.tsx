@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { memo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { MAX_TEXT_LENGTH } from '../../domain/messagePayload.ts'
 
 interface ComposerProps {
@@ -6,7 +6,10 @@ interface ComposerProps {
   onSend: (text: string) => Promise<void>
 }
 
-export function Composer({ disabled, onSend }: ComposerProps) {
+/** Em telas de toque, Enter quebra linha (como no WhatsApp) e o botão envia. */
+const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches
+
+export const Composer = memo(function Composer({ disabled, onSend }: ComposerProps) {
   const [text, setText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -17,30 +20,28 @@ export function Composer({ disabled, onSend }: ComposerProps) {
     el.style.height = `${Math.min(el.scrollHeight, 140)}px`
   }
 
-  async function submit() {
+  function submit() {
     const value = text
     if (!value.trim() || disabled) return
     setText('')
     requestAnimationFrame(resize)
-    await onSend(value)
-    textareaRef.current?.focus()
+    void onSend(value)
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // Enter envia; Shift+Enter quebra linha. Em teclados virtuais, o botão envia.
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault()
-      void submit()
-    }
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+    if (isTouchDevice()) return
+    event.preventDefault()
+    submit()
   }
 
   return (
     <form
       onSubmit={(e: FormEvent) => {
         e.preventDefault()
-        void submit()
+        submit()
       }}
-      className="flex items-end gap-2 border-t border-ink-800 bg-ink-900 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="flex shrink-0 items-end gap-2 border-t border-ink-800 bg-ink-900 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
       <textarea
         ref={textareaRef}
@@ -55,13 +56,17 @@ export function Composer({ disabled, onSend }: ComposerProps) {
         onKeyDown={handleKeyDown}
         placeholder="Mensagem"
         aria-label="Mensagem"
-        className="max-h-[140px] min-h-10 flex-1 resize-none rounded-2xl border border-ink-700 bg-ink-850 px-4 py-2.5 text-[15px] leading-snug text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none disabled:opacity-50"
+        enterKeyHint="enter"
+        autoComplete="off"
+        className="max-h-[140px] min-h-10 flex-1 resize-none rounded-2xl border border-ink-700 bg-ink-850 px-4 py-2 text-base leading-snug text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none disabled:opacity-50"
       />
       <button
         type="submit"
         disabled={disabled || !text.trim()}
         aria-label="Enviar"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink-50 text-ink-950 transition-opacity disabled:opacity-30"
+        // Impede que o toque no botão tire o foco do campo e feche o teclado.
+        onPointerDown={(e) => e.preventDefault()}
+        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink-50 text-ink-950 transition-opacity active:scale-95 disabled:opacity-30"
       >
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
           <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -69,4 +74,4 @@ export function Composer({ disabled, onSend }: ComposerProps) {
       </button>
     </form>
   )
-}
+})

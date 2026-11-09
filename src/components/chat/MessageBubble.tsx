@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import { formatMessageTime, type ChatMessage } from '../../domain/chat.ts'
 
-export function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
+export const MessageBubble = memo(function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
   const { payload } = message
   return (
     <li className={`flex ${mine ? 'justify-end' : 'justify-start'} animate-[fade-in_150ms_ease-out]`}>
@@ -22,4 +23,4 @@ export function MessageBubble({ message, mine }: { message: ChatMessage; mine: b
       </div>
     </li>
   )
-}
+})

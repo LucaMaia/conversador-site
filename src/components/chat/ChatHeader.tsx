@@ -11,7 +11,7 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ title, expiresAt, now, connected, onLeave, leaveLabel }: ChatHeaderProps) {
   return (
-    <header className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+    <header className="flex shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <button
         type="button"
         onClick={onLeave}

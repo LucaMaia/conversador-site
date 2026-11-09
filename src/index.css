@@ -20,6 +20,25 @@
 
 :root {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* iOS amplia a tela ao focar campos com fonte < 16px: todos os campos usam 16px. */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Remove o atraso de toque duplo e o destaque azul ao tocar. */
+a,
+button,
+input,
+textarea,
+label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -30,6 +49,7 @@ body,
 
 body {
   margin: 0;
+  overscroll-behavior: none;
   background: var(--color-ink-950);
   color: var(--color-ink-50);
   font-family: var(--font-sans);
