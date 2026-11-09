@@ -1,7 +1,8 @@
 // Limpeza física agendada (pg_cron, a cada minuto).
 //   1) Salas vencidas ou excluídas: arquivos do Storage e linha da sala.
-//   2) Imagens vistas há mais de 15 minutos: arquivo do Storage.
-//   3) Sessões anônimas órfãs e registros antigos de tentativas.
+//   2) Fotos, vídeos e áudios abertos há mais de 15 minutos: arquivo do Storage.
+//   3) Arquivos órfãos: upload sem mensagem há mais de 15 minutos.
+//   4) Sessões anônimas órfãs e registros antigos de tentativas.
 //
 // Só atua sobre o que o próprio banco considera vencido, então chamadas
 // extras não têm efeito. Não retorna dados de nenhuma sala.
@@ -14,7 +15,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response(null, { status: 405 })
 
   const client = createAdminClient()
-  const summary = { rooms: 0, media: 0, failures: 0 }
+  const summary = { rooms: 0, media: 0, orphans: 0, failures: 0 }
 
   // 1) Salas
   const { data: roomIds, error: roomsError } = await client.rpc('purge_mark_expired')
@@ -59,7 +60,25 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3) Manutenção
+  // 3) Arquivos órfãos (upload sem mensagem há mais de 15 min)
+  const { data: orphans, error: orphansError } = await client.rpc('purge_orphan_objects')
+  if (orphansError) {
+    console.error('purge_orphan_objects', orphansError)
+    summary.failures++
+  } else {
+    const names = ((orphans ?? []) as { object_name: string }[]).map((o) => o.object_name)
+    if (names.length > 0) {
+      const { error: removeError } = await client.storage.from(BUCKET).remove(names)
+      if (removeError) {
+        console.error('storage.remove (órfãos)', removeError)
+        summary.failures++
+      } else {
+        summary.orphans = names.length
+      }
+    }
+  }
+
+  // 4) Manutenção
   const { error: hkError } = await client.rpc('purge_housekeeping')
   if (hkError) {
     console.error('purge_housekeeping', hkError)
