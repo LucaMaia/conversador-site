@@ -4,15 +4,15 @@ import type { RecordedAudio, RecordingSession } from '../../lib/audioRecorder.ts
 
 interface AudioRecorderBarProps {
   session: RecordingSession
-  /** Duração máxima atingida: envia automaticamente. */
-  limitReached: boolean
+  /** Duração máxima atingida ou captura interrompida pelo sistema: envia o que foi gravado. */
+  autoStop: boolean
   onSend: (audio: RecordedAudio) => void
   onCancel: () => void
   onError: (message: string) => void
 }
 
 /** Barra exibida durante a gravação: tempo, cancelar e enviar. */
-export function AudioRecorderBar({ session, limitReached, onSend, onCancel, onError }: AudioRecorderBarProps) {
+export function AudioRecorderBar({ session, autoStop, onSend, onCancel, onError }: AudioRecorderBarProps) {
   const [startedAt] = useState(() => Date.now())
   const [now, setNow] = useState(() => Date.now())
   const [stopping, setStopping] = useState(false)
@@ -35,10 +35,10 @@ export function AudioRecorderBar({ session, limitReached, onSend, onCancel, onEr
   }
 
   useEffect(() => {
-    if (limitReached) void stopAndSend()
+    if (autoStop) void stopAndSend()
     // stopAndSend é estável o suficiente: protegido por sentRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [limitReached])
+  }, [autoStop])
 
   const elapsed = Math.min(MAX_AUDIO_MS, now - startedAt)
 

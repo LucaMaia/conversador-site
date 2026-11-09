@@ -22,7 +22,7 @@ export const Composer = memo(function Composer({ disabled, onSend, onSendImage, 
   const [text, setText] = useState('')
   const [pendingImage, setPendingImage] = useState<File | null>(null)
   const [recording, setRecording] = useState<RecordingSession | null>(null)
-  const [limitReached, setLimitReached] = useState(false)
+  const [autoStop, setAutoStop] = useState(false)
   const [startingMic, setStartingMic] = useState(false)
   const [recorderError, setRecorderError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -55,10 +55,11 @@ export const Composer = memo(function Composer({ disabled, onSend, onSendImage, 
 
   async function startAudio() {
     setRecorderError(null)
-    setLimitReached(false)
+    setAutoStop(false)
     setStartingMic(true)
     try {
-      setRecording(await startRecording(() => setLimitReached(true)))
+      // Chamado diretamente do toque: o pedido de permissão do iOS depende disso.
+      setRecording(await startRecording(() => setAutoStop(true)))
     } catch (err) {
       setRecorderError(err instanceof RecorderError ? err.message : 'Não foi possível gravar.')
     } finally {
@@ -90,7 +91,7 @@ export const Composer = memo(function Composer({ disabled, onSend, onSendImage, 
         {recording ? (
           <AudioRecorderBar
             session={recording}
-            limitReached={limitReached}
+            autoStop={autoStop}
             onSend={(audio) => {
               setRecording(null)
               void onSendAudio(audio)

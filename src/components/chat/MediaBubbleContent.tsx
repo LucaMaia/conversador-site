@@ -55,7 +55,7 @@ function AudioContent({ message, payload, mine }: Props) {
   if (url && media.state.kind !== 'expired') {
     return (
       <div className="flex min-w-56 flex-col gap-1">
-        <AudioPlayer url={url} fallbackDurationMs={payload.durationMs ?? 0} />
+        <AudioPlayer url={url} mime={payload.mime} fallbackDurationMs={payload.durationMs ?? 0} />
         {media.state.kind === 'viewing' && (
           <span className="text-[11px] text-ink-400">some em {formatMinutes(media.state.remainingMs)}</span>
         )}

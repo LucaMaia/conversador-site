@@ -3,23 +3,29 @@ import { formatDuration } from '../../domain/audio.ts'
 
 interface AudioPlayerProps {
   url: string
+  /** Tipo do áudio, para verificar se este aparelho consegue reproduzir. */
+  mime: string
   /** Duração registrada na gravação (WebM gravado no navegador costuma não informar). */
   fallbackDurationMs: number
 }
 
 /** Player compacto. Tenta tocar ao abrir; se o navegador bloquear, espera o toque. */
-export function AudioPlayer({ url, fallbackDurationMs }: AudioPlayerProps) {
+export function AudioPlayer({ url, mime, fallbackDurationMs }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
   const [currentMs, setCurrentMs] = useState(0)
   const [durationMs, setDurationMs] = useState(fallbackDurationMs)
+  const [failed, setFailed] = useState(false)
+  // Ex.: áudio WebM gravado num computador e aberto num iPhone antigo.
+  const [supported] = useState(() => document.createElement('audio').canPlayType(mime) !== '')
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio || !supported) return
+    // Se o navegador bloquear o início automático, o botão ▶ continua disponível.
     audio.play().catch(() => setPlaying(false))
     return () => audio.pause()
-  }, [url])
+  }, [url, supported])
 
   function toggle() {
     const audio = audioRef.current
@@ -36,12 +42,21 @@ export function AudioPlayer({ url, fallbackDurationMs }: AudioPlayerProps) {
 
   const progress = durationMs > 0 ? Math.min(1, currentMs / durationMs) : 0
 
+  if (!supported || failed) {
+    return (
+      <p role="alert" className="py-1 text-xs text-danger-500">
+        Este aparelho não consegue reproduzir este formato de áudio ({mime}). Tente em outro navegador ou aparelho.
+      </p>
+    )
+  }
+
   return (
     <div className="flex items-center gap-3 py-1">
       <audio
         ref={audioRef}
         src={url}
         preload="auto"
+        onError={() => setFailed(true)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => {
