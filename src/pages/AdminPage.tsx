@@ -6,6 +6,7 @@ import { AdminLoginForm } from '../components/admin/AdminLoginForm.tsx'
 import { VaultForm } from '../components/admin/VaultForm.tsx'
 import { CenteredCard } from '../components/ui/CenteredCard.tsx'
 import { ErrorText } from '../components/ui/ErrorText.tsx'
+import { HomeLink } from '../components/ui/HomeLink.tsx'
 import type { VaultRecord } from '../lib/crypto/index.ts'
 import { signOut } from '../services/authService.ts'
 import { fetchVaultRecord } from '../services/vaultService.ts'
@@ -59,32 +60,31 @@ export function AdminPage() {
     )
   }
 
-  switch (state.step) {
-    case 'login':
-      return (
+  return (
+    <>
+      <HomeLink className="fixed top-[max(1rem,env(safe-area-inset-top))] left-3 z-10" />
+      {state.step === 'login' && (
         <AdminLoginForm
           onSignedIn={({ userId }) => {
             setRoom(null)
             setState({ step: 'loading-vault', userId })
           }}
         />
-      )
-    case 'loading-vault':
-      return <CenteredCard title="Carregando cofre…">{null}</CenteredCard>
-    case 'vault':
-      return (
+      )}
+      {state.step === 'loading-vault' && <CenteredCard title="Carregando cofre…">{null}</CenteredCard>}
+      {state.step === 'vault' && (
         <VaultForm
           userId={state.userId}
           record={state.record}
           onUnlocked={(masterKey) => setAdmin({ userId: state.userId, masterKey })}
           onCancel={handleSignOut}
         />
-      )
-    case 'error':
-      return (
+      )}
+      {state.step === 'error' && (
         <CenteredCard title="Erro">
           <ErrorText message={state.message} />
         </CenteredCard>
-      )
-  }
+      )}
+    </>
+  )
 }
