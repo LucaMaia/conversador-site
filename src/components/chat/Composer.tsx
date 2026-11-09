@@ -2,13 +2,14 @@ import { memo, useEffect, useRef, useState, type FormEvent, type KeyboardEvent }
 import { MAX_TEXT_LENGTH } from '../../domain/messagePayload.ts'
 import { RecorderError, startRecording, type RecordedAudio, type RecordingSession } from '../../lib/audioRecorder.ts'
 import { AudioRecorderBar } from './AudioRecorderBar.tsx'
-import { ImageSendPreview } from './ImageSendPreview.tsx'
+import { MediaSendPreview } from './MediaSendPreview.tsx'
 import { MicIcon } from './MediaBubbleContent.tsx'
 
 interface ComposerProps {
   disabled: boolean
   onSend: (text: string) => Promise<void>
   onSendImage: (file: File) => Promise<void>
+  onSendVideo: (file: File) => Promise<void>
   onSendAudio: (audio: RecordedAudio) => Promise<void>
 }
 
@@ -18,9 +19,9 @@ const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches
 const ROUND_BUTTON =
   'flex size-10 shrink-0 items-center justify-center rounded-full bg-ink-50 text-ink-950 transition-opacity active:scale-95 disabled:opacity-30'
 
-export const Composer = memo(function Composer({ disabled, onSend, onSendImage, onSendAudio }: ComposerProps) {
+export const Composer = memo(function Composer({ disabled, onSend, onSendImage, onSendVideo, onSendAudio }: ComposerProps) {
   const [text, setText] = useState('')
-  const [pendingImage, setPendingImage] = useState<File | null>(null)
+  const [pendingMedia, setPendingMedia] = useState<File | null>(null)
   const [recording, setRecording] = useState<RecordingSession | null>(null)
   const [autoStop, setAutoStop] = useState(false)
   const [startingMic, setStartingMic] = useState(false)
@@ -69,14 +70,14 @@ export const Composer = memo(function Composer({ disabled, onSend, onSendImage, 
 
   return (
     <>
-      {pendingImage && (
-        <ImageSendPreview
-          file={pendingImage}
-          onCancel={() => setPendingImage(null)}
+      {pendingMedia && (
+        <MediaSendPreview
+          file={pendingMedia}
+          onCancel={() => setPendingMedia(null)}
           onConfirm={() => {
-            const file = pendingImage
-            setPendingImage(null)
-            void onSendImage(file)
+            const file = pendingMedia
+            setPendingMedia(null)
+            void (file.type.startsWith('video/') ? onSendVideo(file) : onSendImage(file))
           }}
         />
       )}
@@ -110,19 +111,19 @@ export const Composer = memo(function Composer({ disabled, onSend, onSendImage, 
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               hidden
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 e.target.value = ''
-                if (file) setPendingImage(file)
+                if (file) setPendingMedia(file)
               }}
             />
             <button
               type="button"
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
-              aria-label="Enviar foto"
+              aria-label="Enviar foto ou vídeo"
               className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-800 hover:text-ink-200 disabled:opacity-30"
             >
               <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>

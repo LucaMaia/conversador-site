@@ -3,7 +3,7 @@ import type { RoomSession } from '../app/sessionContext.tsx'
 import { mergeMessages, type ChatMessage } from '../domain/chat.ts'
 import { MAX_TEXT_LENGTH, type MediaPayload } from '../domain/messagePayload.ts'
 import type { RecordedAudio } from '../lib/audioRecorder.ts'
-import { prepareImage, uploadEncryptedFile } from '../services/mediaService.ts'
+import { prepareImage, prepareVideo, uploadEncryptedFile } from '../services/mediaService.ts'
 import { fetchMessages, sendMessage, subscribeToMessages } from '../services/messageService.ts'
 import { ServiceError } from '../services/errors.ts'
 import { fetchRoomInfo } from '../services/roomAccessService.ts'
@@ -167,6 +167,26 @@ export function useRoomChat(session: RoomSession, now: Date) {
     [sendMedia],
   )
 
+  const sendVideo = useCallback(
+    (file: File) =>
+      sendMedia(async () => {
+        // Remove metadados (GPS, aparelho) de MP4/MOV sem recodificar.
+        const video = await prepareVideo(file)
+        const payload: MediaPayload = {
+          v: 1,
+          kind: 'video',
+          mime: video.mime,
+          size: video.blob.size,
+          fileId: crypto.randomUUID(),
+          ...(video.width !== undefined && { width: video.width }),
+          ...(video.height !== undefined && { height: video.height }),
+          ...(video.durationMs !== undefined && { durationMs: video.durationMs }),
+        }
+        return { payload, blob: video.blob }
+      }, 'Vídeo não enviado.'),
+    [sendMedia],
+  )
+
   const sendAudio = useCallback(
     (audio: RecordedAudio) =>
       sendMedia(async () => {
@@ -183,5 +203,5 @@ export function useRoomChat(session: RoomSession, now: Date) {
     [sendMedia],
   )
 
-  return { messages, status, expiresAt, connected, sendError, sendText, sendImage, sendAudio }
+  return { messages, status, expiresAt, connected, sendError, sendText, sendImage, sendVideo, sendAudio }
 }

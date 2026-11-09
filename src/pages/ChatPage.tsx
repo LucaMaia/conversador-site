@@ -36,7 +36,7 @@ function ChatRoom({ session }: { session: RoomSession }) {
   const navigate = useNavigate()
   const { setRoom } = useSession()
   const { now } = useServerClock()
-  const { messages, status, expiresAt, connected, sendError, sendText, sendImage, sendAudio } = useRoomChat(session, now)
+  const { messages, status, expiresAt, connected, sendError, sendText, sendImage, sendVideo, sendAudio } = useRoomChat(session, now)
   const viewportHeight = useVisualViewportHeight()
   const isAdmin = session.role === 'admin'
 
@@ -99,7 +99,7 @@ function ChatRoom({ session }: { session: RoomSession }) {
           {sendError}
         </p>
       )}
-      <Composer disabled={status.kind !== 'ready'} onSend={sendText} onSendImage={sendImage} onSendAudio={sendAudio} />
+      <Composer disabled={status.kind !== 'ready'} onSend={sendText} onSendImage={sendImage} onSendVideo={sendVideo} onSendAudio={sendAudio} />
     </div>
   )
 }

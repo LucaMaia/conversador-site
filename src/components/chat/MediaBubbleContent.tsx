@@ -4,7 +4,7 @@ import type { ChatMessage } from '../../domain/chat.ts'
 import { formatMinutes, type MediaState } from '../../domain/ephemeralMedia.ts'
 import type { MediaPayload } from '../../domain/messagePayload.ts'
 import { AudioPlayer } from './AudioPlayer.tsx'
-import { ImageViewer } from './ImageViewer.tsx'
+import { MediaViewer } from './MediaViewer.tsx'
 import { useEphemeralMedia } from './useEphemeralMedia.ts'
 
 interface Props {
@@ -14,13 +14,17 @@ interface Props {
 }
 
 export function MediaBubbleContent(props: Props) {
-  return props.payload.kind === 'audio' ? <AudioContent {...props} /> : <ImageContent {...props} />
+  return props.payload.kind === 'audio' ? <AudioContent {...props} /> : <VisualContent {...props} />
 }
 
 // ---------------------------------------------------------------------------
-// Foto
+// Foto e vídeo (abrem em tela cheia)
 // ---------------------------------------------------------------------------
-function ImageContent({ message, payload, mine }: Props) {
+function VisualContent({ message, payload, mine }: Props) {
+  const isVideo = payload.kind === 'video'
+  const duration = isVideo && payload.durationMs ? formatDuration(payload.durationMs) : null
+  const texts = isVideo ? VIDEO_TEXTS : PHOTO_TEXTS
+  const title = isVideo ? (duration ? `Vídeo · ${duration}` : 'Vídeo') : 'Foto'
   const media = useEphemeralMedia(message, payload)
   const [viewer, setViewer] = useState<{ url: string; expiresAt: Date | null } | null>(null)
   const close = useCallback(() => setViewer(null), [])
@@ -28,17 +32,26 @@ function ImageContent({ message, payload, mine }: Props) {
   return (
     <>
       <MediaTile
-        icon={<PhotoIcon />}
+        icon={isVideo ? <VideoIcon /> : <PhotoIcon />}
         state={media.state}
         loading={media.loading}
         error={media.error}
         disabled={message.pending}
-        label={statusLabel({ title: 'Foto', ...PHOTO_TEXTS }, message, media.state, mine)}
-        hint={!message.pending && media.state.kind === 'unviewed' && !mine ? 'Some 15 minutos depois de aberta' : null}
+        label={statusLabel({ title, ...texts }, message, media.state, mine)}
+        hint={
+          !message.pending && media.state.kind === 'unviewed' && !mine
+            ? `Some 15 minutos depois de ${isVideo ? 'aberto' : 'aberta'}`
+            : null
+        }
         onClick={async () => setViewer(await media.open())}
       />
       {viewer && media.state.kind !== 'expired' && (
-        <ImageViewer url={viewer.url} expiresAt={viewer.expiresAt ?? message.mediaExpiresAt} onClose={close} />
+        <MediaViewer
+          url={viewer.url}
+          kind={isVideo ? 'video' : 'image'}
+          expiresAt={viewer.expiresAt ?? message.mediaExpiresAt}
+          onClose={close}
+        />
       )}
     </>
   )
@@ -96,6 +109,13 @@ const PHOTO_TEXTS = {
   sending: 'Enviando foto…',
   expired: 'Foto expirada',
   notOpened: 'não vista',
+  action: 'toque para ver',
+} as const
+
+const VIDEO_TEXTS = {
+  sending: 'Enviando vídeo…',
+  expired: 'Vídeo expirado',
+  notOpened: 'não visto',
   action: 'toque para ver',
 } as const
 
@@ -160,6 +180,15 @@ function PhotoIcon() {
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <circle cx="9" cy="10" r="1.6" />
       <path d="m21 16-5-5-8 8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function VideoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="6" width="13" height="12" rx="2" />
+      <path d="m16 10 5-3v10l-5-3" strokeLinejoin="round" />
     </svg>
   )
 }

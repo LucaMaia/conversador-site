@@ -13,6 +13,7 @@ vi.mock('../hooks/useRoomChat.ts', () => ({
     sendText: async () => {},
     sendImage: async () => {},
     sendAudio: async () => {},
+    sendVideo: async () => {},
   }),
 }))
 vi.mock('../hooks/useServerClock.ts', () => ({ useServerClock: () => ({ now: new Date(), synced: true }) }))
