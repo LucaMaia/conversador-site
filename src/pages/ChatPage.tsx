@@ -11,9 +11,10 @@ import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight.ts'
 import { signOut } from '../services/authService.ts'
 
 export function ChatPage() {
-  const { room } = useSession()
-  // Sem sessão em memória (ex.: página recarregada) => volta à tela inicial.
-  if (!room) return <Navigate to="/" replace />
+  const { room, admin } = useSession()
+  // Sem sessão de conversa em memória (ex.: página recarregada):
+  // o admin desbloqueado volta ao painel; os demais, à tela do código.
+  if (!room) return <Navigate to={admin ? '/admin' : '/'} replace />
   return <ChatRoom key={room.roomId} session={room} />
 }
 
@@ -37,12 +38,15 @@ function ChatRoom({ session }: { session: RoomSession }) {
   const isAdmin = session.role === 'admin'
 
   async function leave() {
-    setRoom(null)
+    // O React Router aplica a navegação depois da limpeza da sessão; nesse
+    // intervalo, o redirecionamento de "sem sessão" acima leva o admin ao painel.
     if (isAdmin) {
       navigate('/admin')
+      setRoom(null)
     } else {
-      await signOut()
       navigate('/', { replace: true })
+      setRoom(null)
+      await signOut()
     }
   }
 
