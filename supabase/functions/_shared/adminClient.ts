@@ -14,20 +14,4 @@ export function bearerToken(req: Request): string | null {
   return match?.[1] ?? null
 }
 
-/** Retorna o id do usuário do JWT se ele for o admin; caso contrário, null. */
-export async function requireAdmin(client: SupabaseClient, req: Request): Promise<string | null> {
-  const token = bearerToken(req)
-  if (!token) return null
-  const { data, error } = await client.auth.getUser(token)
-  if (error || !data.user || data.user.is_anonymous) return null
-
-  const { data: row, error: rowError } = await client
-    .from('admins')
-    .select('user_id')
-    .eq('user_id', data.user.id)
-    .maybeSingle()
-  if (rowError || !row) return null
-  return data.user.id
-}
-
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useSession, type RoomSession } from '../app/sessionContext.tsx'
 import { ChatHeader } from '../components/chat/ChatHeader.tsx'
@@ -12,6 +12,9 @@ import { useServerClock } from '../hooks/useServerClock.ts'
 import { useVisualViewportHeight } from '../hooks/useVisualViewportHeight.ts'
 import { markRoomRead } from '../services/activityService.ts'
 import { signOut } from '../services/authService.ts'
+import { ServiceError } from '../services/errors.ts'
+import { deleteRoom } from '../services/roomService.ts'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog.tsx'
 
 export function ChatPage() {
   const { room, admin } = useSession()
@@ -21,7 +24,11 @@ export function ChatPage() {
   return <ChatRoom key={room.roomId} session={room} />
 }
 
-const END_TEXT: Record<ChatEndReason, { title: string; body: string }> = {
+const END_TEXT: Record<ChatEndReason | 'deleted', { title: string; body: string }> = {
+  deleted: {
+    title: 'Conversa apagada',
+    body: 'A conversa, as mensagens, fotos, vídeos e áudios foram apagados para os dois participantes.',
+  },
   expired: {
     title: 'Conversa expirada',
     body: 'O prazo de 24 horas terminou. O conteúdo não pode mais ser acessado e está sendo removido do servidor.',
@@ -47,6 +54,26 @@ function ChatRoom({ session }: { session: RoomSession }) {
     markRoomRead(session.roomId).catch(() => {})
   }, [isAdmin, status.kind, messageCount, session.roomId])
 
+  // Convidado pode apagar a própria conversa (para os dois).
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deleted, setDeleted] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteRoom(session.roomId)
+      setConfirmingDelete(false)
+      setDeleted(true)
+    } catch (err) {
+      setDeleteError(err instanceof ServiceError ? err.message : 'Não foi possível apagar a conversa.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   async function leave() {
     // O React Router aplica a navegação depois da limpeza da sessão; nesse
     // intervalo, o redirecionamento de "sem sessão" acima leva o admin ao painel.
@@ -61,8 +88,8 @@ function ChatRoom({ session }: { session: RoomSession }) {
     }
   }
 
-  if (status.kind === 'ended') {
-    const text = END_TEXT[status.reason]
+  if (deleted || status.kind === 'ended') {
+    const text = END_TEXT[deleted ? 'deleted' : status.kind === 'ended' ? status.reason : 'revoked']
     return (
       <CenteredCard title={text.title} subtitle={text.body}>
         <Button onClick={leave}>{isAdmin ? 'Voltar ao painel' : 'Sair'}</Button>
@@ -82,7 +109,24 @@ function ChatRoom({ session }: { session: RoomSession }) {
         connected={connected}
         onLeave={leave}
         leaveLabel={isAdmin ? '← Painel' : 'Sair'}
+        onDelete={isAdmin ? undefined : () => setConfirmingDelete(true)}
       />
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Apagar conversa?"
+          confirmLabel="Apagar"
+          busy={deleting}
+          error={deleteError}
+          onConfirm={handleDelete}
+          onCancel={() => {
+            setConfirmingDelete(false)
+            setDeleteError(null)
+          }}
+        >
+          A conversa será apagada agora <strong className="text-ink-200">para você e para a outra pessoa</strong>:
+          mensagens, fotos, vídeos e áudios. Não é possível desfazer.
+        </ConfirmDialog>
+      )}
       {status.kind === 'loading' ? (
         <p className="min-h-0 flex-1 pt-10 text-center text-sm text-ink-400">Carregando…</p>
       ) : status.kind === 'error' ? (

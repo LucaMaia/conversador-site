@@ -19,6 +19,8 @@ vi.mock('../hooks/useRoomChat.ts', () => ({
 vi.mock('../hooks/useServerClock.ts', () => ({ useServerClock: () => ({ now: new Date(), synced: true }) }))
 vi.mock('../services/authService.ts', () => ({ signOut: vi.fn(async () => {}) }))
 vi.mock('../services/activityService.ts', () => ({ markRoomRead: vi.fn(async () => {}) }))
+const deleteRoom = vi.fn(async (_roomId: string) => {})
+vi.mock('../services/roomService.ts', () => ({ deleteRoom: (roomId: string) => deleteRoom(roomId) }))
 
 const { ChatPage } = await import('./ChatPage.tsx')
 
@@ -100,5 +102,52 @@ describe('saída do chat', () => {
     const leave = await screen.findByRole('button', { name: 'Sair' })
     await act(async () => leave.click())
     expect(await screen.findByText('tela do código')).toBeInTheDocument()
+  })
+})
+
+describe('apagar conversa pelo chat', () => {
+  beforeEach(() => deleteRoom.mockReset())
+
+  it('o convidado vê o botão de apagar; o admin não', async () => {
+    renderChat('guest')
+    expect(await screen.findByRole('button', { name: 'Apagar conversa' })).toBeInTheDocument()
+  })
+
+  it('no chat do admin não há botão de apagar', async () => {
+    renderChat('admin')
+    await screen.findByRole('button', { name: /Painel/ })
+    expect(screen.queryByRole('button', { name: 'Apagar conversa' })).not.toBeInTheDocument()
+  })
+
+  it('pede confirmação, apaga a sala atual e avisa', async () => {
+    deleteRoom.mockResolvedValueOnce(undefined)
+    renderChat('guest')
+    const trash = await screen.findByRole('button', { name: 'Apagar conversa' })
+    await act(async () => trash.click())
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('para você e para a outra pessoa')
+    expect(deleteRoom).not.toHaveBeenCalled()
+
+    await act(async () => screen.getByRole('button', { name: 'Apagar' }).click())
+    expect(deleteRoom).toHaveBeenCalledWith('r')
+    expect(await screen.findByText('Conversa apagada')).toBeInTheDocument()
+  })
+
+  it('cancelar não apaga nada', async () => {
+    renderChat('guest')
+    const trash = await screen.findByRole('button', { name: 'Apagar conversa' })
+    await act(async () => trash.click())
+    await act(async () => screen.getByRole('button', { name: 'Cancelar' }).click())
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(deleteRoom).not.toHaveBeenCalled()
+  })
+
+  it('falha no servidor mostra o erro e mantém a conversa', async () => {
+    deleteRoom.mockRejectedValueOnce(new Error('rede'))
+    renderChat('guest')
+    const trash = await screen.findByRole('button', { name: 'Apagar conversa' })
+    await act(async () => trash.click())
+    await act(async () => screen.getByRole('button', { name: 'Apagar' }).click())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível apagar a conversa.')
+    expect(screen.queryByText('Conversa apagada')).not.toBeInTheDocument()
   })
 })

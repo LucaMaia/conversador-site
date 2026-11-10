@@ -125,7 +125,10 @@ export async function revealInviteCode(room: AdminRoom, masterKey: CryptoKey): P
   return decryptInviteCode(masterKey, room.accessHash, room.encryptedCode)
 }
 
-/** Exclusão imediata, executada pela Edge Function delete-room. */
+/**
+ * Exclusão imediata, executada pela Edge Function delete-room.
+ * O admin pode excluir qualquer sala; o convidado, apenas a sala em que está.
+ */
 export async function deleteRoom(roomId: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke<{ deleted: boolean }>('delete-room', {
     body: { room_id: roomId },

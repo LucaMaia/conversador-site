@@ -1,4 +1,6 @@
 import { formatDateTime, formatRemaining, remainingMs } from '../../domain/rooms.ts'
+import { IconButton } from '../ui/IconButton.tsx'
+import { TrashIcon } from '../ui/icons.tsx'
 
 interface ChatHeaderProps {
   title: string
@@ -7,9 +9,11 @@ interface ChatHeaderProps {
   connected: boolean
   onLeave: () => void
   leaveLabel: string
+  /** Quando presente, mostra o botão de apagar a conversa. */
+  onDelete?: () => void
 }
 
-export function ChatHeader({ title, expiresAt, now, connected, onLeave, leaveLabel }: ChatHeaderProps) {
+export function ChatHeader({ title, expiresAt, now, connected, onLeave, leaveLabel, onDelete }: ChatHeaderProps) {
   return (
     <header className="flex shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <button
@@ -36,6 +40,11 @@ export function ChatHeader({ title, expiresAt, now, connected, onLeave, leaveLab
         <span className="font-mono text-sm tabular-nums text-ink-200" aria-label="Tempo restante">
           {formatRemaining(remainingMs(expiresAt, now))}
         </span>
+      )}
+      {onDelete && (
+        <IconButton label="Apagar conversa" tone="danger" className="-mr-2" onClick={onDelete}>
+          <TrashIcon />
+        </IconButton>
       )}
     </header>
   )
