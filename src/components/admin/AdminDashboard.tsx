@@ -10,6 +10,7 @@ import { revealInviteCode, type AdminRoom } from '../../services/roomService.ts'
 import { Button } from '../ui/Button.tsx'
 import { ErrorText } from '../ui/ErrorText.tsx'
 import { HomeLink } from '../ui/HomeLink.tsx'
+import { LogoutIcon } from '../ui/icons.tsx'
 import { NewRoomNotice } from './NewRoomNotice.tsx'
 import { RoomCard } from './RoomCard.tsx'
 import { StatsBar } from './StatsBar.tsx'
@@ -67,15 +68,21 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 sm:gap-6 sm:py-8">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <HomeLink className="-ml-2" />
           <h1 className="text-lg font-semibold">Conversas</h1>
         </div>
-        <Button variant="ghost" className="h-9 text-xs" onClick={onSignOut}>
-          Sair e bloquear
-        </Button>
+        {/* Sair também tranca o cofre: a chave só existe em memória. */}
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="-mr-2 inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm text-ink-400 transition-colors hover:bg-ink-800 hover:text-ink-50"
+        >
+          <LogoutIcon className="size-4" />
+          Sair
+        </button>
       </header>
 
       <StatsBar active={active.length} expired={inactive.length} />
@@ -88,7 +95,7 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
             maxLength={MAX_ROOM_LABEL_LENGTH}
             placeholder="Nome da pessoa (opcional)"
             aria-label="Nome da nova conversa"
-            className="h-10 flex-1 rounded-lg border border-ink-700 bg-ink-900 px-3 text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none"
+            className="h-10 w-full rounded-lg border border-ink-700 bg-ink-900 px-3 text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none sm:flex-1"
           />
           <Button type="submit" busy={creating}>
             Nova conversa
@@ -115,7 +122,7 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
         ) : active.length === 0 ? (
           <p className="text-sm text-ink-400">Nenhuma conversa ativa.</p>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2.5">
             {active.map((room) => (
               <RoomCard key={room.id} room={room} now={now} masterKey={masterKey} onDelete={remove} onEnter={handleEnter} onRename={rename} />
             ))}
@@ -128,7 +135,7 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
           <h2 id="inactive-heading" className="text-xs font-medium tracking-wide text-ink-400 uppercase">
             Expiradas — aguardando limpeza
           </h2>
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2.5">
             {inactive.map((room) => (
               <RoomCard key={room.id} room={room} now={now} masterKey={masterKey} onDelete={remove} onEnter={handleEnter} onRename={rename} />
             ))}

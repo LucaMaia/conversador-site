@@ -66,7 +66,7 @@ export function RoomLabelEditor({ label, editable, onSave }: RoomLabelEditorProp
             setValue(label ?? '')
             setEditing(true)
           }}
-          className="shrink-0 text-xs text-ink-400 underline-offset-2 hover:text-ink-200 hover:underline"
+          className="-my-1 shrink-0 rounded px-1 py-1 text-xs text-ink-600 underline-offset-2 hover:text-ink-200 hover:underline"
         >
           Renomear
         </button>
