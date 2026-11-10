@@ -5,9 +5,9 @@ import type { DashboardRoom } from '../../hooks/useAdminRooms.ts'
 import type { AdminRoom } from '../../services/roomService.ts'
 import { Button } from '../ui/Button.tsx'
 import { IconButton } from '../ui/IconButton.tsx'
-import { TrashIcon } from '../ui/icons.tsx'
+import { PencilIcon, TrashIcon } from '../ui/icons.tsx'
 import { InviteCodeActions } from './InviteCodeActions.tsx'
-import { RoomLabelEditor } from './RoomLabelEditor.tsx'
+import { RoomLabel, RoomLabelForm } from './RoomLabelEditor.tsx'
 
 interface RoomCardProps {
   room: DashboardRoom
@@ -28,6 +28,7 @@ export function RoomCard({ room, now, masterKey, onDelete, onEnter, onRename }: 
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [entering, setEntering] = useState(false)
+  const [renaming, setRenaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // A confirmação de exclusão expira sozinha.
@@ -72,32 +73,43 @@ export function RoomCard({ room, now, masterKey, onDelete, onEnter, onRename }: 
           className={`size-2 shrink-0 rounded-full ${active && room.hasGuest ? 'bg-accent-500' : 'bg-ink-600'}`}
           aria-hidden
         />
-        <div className="flex min-w-0 flex-1">
-          <RoomLabelEditor label={room.label} editable={active} onSave={(label) => onRename(room, label)} />
-        </div>
-        {hasUnread && (
-          <span
-            className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent-500 px-2 text-xs font-semibold text-ink-950 animate-[fade-in_200ms_ease-out]"
-            aria-label={`${room.unread} mensagens não lidas`}
-          >
-            {room.unread > 99 ? '99+' : room.unread}
-          </span>
+        {renaming ? (
+          <RoomLabelForm label={room.label} onSave={(label) => onRename(room, label)} onDone={() => setRenaming(false)} />
+        ) : (
+          <>
+            <div className="flex min-w-0 flex-1">
+              <RoomLabel label={room.label} />
+            </div>
+            {hasUnread && (
+              <span
+                className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent-500 px-2 text-xs font-semibold text-ink-950 animate-[fade-in_200ms_ease-out]"
+                aria-label={`${room.unread} mensagens não lidas`}
+              >
+                {room.unread > 99 ? '99+' : room.unread}
+              </span>
+            )}
+            {active &&
+              (confirming ? (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="h-8 shrink-0 rounded-lg bg-danger-500/15 px-3 text-xs font-medium text-danger-500 transition-colors hover:bg-danger-500/25 disabled:opacity-50 animate-[fade-in_150ms_ease-out]"
+                >
+                  {deleting ? 'Excluindo…' : 'Confirmar'}
+                </button>
+              ) : (
+                <div className="-mr-2 flex shrink-0 items-center">
+                  <IconButton label="Renomear conversa" onClick={() => setRenaming(true)}>
+                    <PencilIcon />
+                  </IconButton>
+                  <IconButton label="Excluir conversa" tone="danger" onClick={() => setConfirming(true)}>
+                    <TrashIcon />
+                  </IconButton>
+                </div>
+              ))}
+          </>
         )}
-        {active &&
-          (confirming ? (
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="h-8 shrink-0 rounded-lg bg-danger-500/15 px-3 text-xs font-medium text-danger-500 transition-colors hover:bg-danger-500/25 disabled:opacity-50 animate-[fade-in_150ms_ease-out]"
-            >
-              {deleting ? 'Excluindo…' : 'Confirmar'}
-            </button>
-          ) : (
-            <IconButton label="Excluir conversa" tone="danger" className="-mr-2" onClick={() => setConfirming(true)}>
-              <TrashIcon />
-            </IconButton>
-          ))}
         {!active && <span className="shrink-0 text-xs text-ink-400">{INACTIVE_LABEL[phase]}</span>}
       </div>
 
