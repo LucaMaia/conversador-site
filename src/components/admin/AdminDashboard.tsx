@@ -88,16 +88,16 @@ export function AdminDashboard({ userId, masterKey, onSignOut, onEnterRoom }: Ad
       <StatsBar active={active.length} expired={inactive.length} />
 
       <div className="flex flex-col gap-3">
-        <form onSubmit={handleCreate} className="flex flex-col gap-2 sm:flex-row">
+        <form onSubmit={handleCreate} className="flex gap-2">
           <input
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             maxLength={MAX_ROOM_LABEL_LENGTH}
-            placeholder="Nome da pessoa (opcional)"
+            placeholder="Nome (opcional)"
             aria-label="Nome da nova conversa"
-            className="h-10 w-full rounded-lg border border-ink-700 bg-ink-900 px-3 text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none sm:flex-1"
+            className="h-10 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-900 px-3 text-ink-50 placeholder:text-ink-600 focus:border-ink-400 focus:outline-none"
           />
-          <Button type="submit" busy={creating}>
+          <Button type="submit" busy={creating} className="shrink-0">
             Nova conversa
           </Button>
         </form>

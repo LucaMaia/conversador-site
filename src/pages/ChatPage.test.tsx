@@ -108,15 +108,22 @@ describe('saída do chat', () => {
 describe('apagar conversa pelo chat', () => {
   beforeEach(() => deleteRoom.mockReset())
 
-  it('o convidado vê o botão de apagar; o admin não', async () => {
+  it('o convidado vê o botão de apagar', async () => {
     renderChat('guest')
     expect(await screen.findByRole('button', { name: 'Apagar conversa' })).toBeInTheDocument()
   })
 
-  it('no chat do admin não há botão de apagar', async () => {
+  it('o admin também apaga pelo chat e pode voltar ao painel', async () => {
+    deleteRoom.mockResolvedValueOnce(undefined)
     renderChat('admin')
-    await screen.findByRole('button', { name: /Painel/ })
-    expect(screen.queryByRole('button', { name: 'Apagar conversa' })).not.toBeInTheDocument()
+    const trash = await screen.findByRole('button', { name: 'Apagar conversa' })
+    await act(async () => trash.click())
+    await act(async () => screen.getByRole('button', { name: 'Apagar' }).click())
+    expect(deleteRoom).toHaveBeenCalledWith('r')
+    expect(await screen.findByText('Conversa apagada')).toBeInTheDocument()
+    const back = screen.getByRole('button', { name: 'Voltar ao painel' })
+    await act(async () => back.click())
+    expect(await screen.findByText('lista de conversas')).toBeInTheDocument()
   })
 
   it('pede confirmação, apaga a sala atual e avisa', async () => {

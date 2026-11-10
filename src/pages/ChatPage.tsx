@@ -54,7 +54,7 @@ function ChatRoom({ session }: { session: RoomSession }) {
     markRoomRead(session.roomId).catch(() => {})
   }, [isAdmin, status.kind, messageCount, session.roomId])
 
-  // Convidado pode apagar a própria conversa (para os dois).
+  // Admin e convidado podem apagar a conversa pelo chat (para os dois).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -109,7 +109,7 @@ function ChatRoom({ session }: { session: RoomSession }) {
         connected={connected}
         onLeave={leave}
         leaveLabel={isAdmin ? '← Painel' : 'Sair'}
-        onDelete={isAdmin ? undefined : () => setConfirmingDelete(true)}
+        onDelete={() => setConfirmingDelete(true)}
       />
       {confirmingDelete && (
         <ConfirmDialog
